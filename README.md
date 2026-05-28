@@ -31,10 +31,10 @@ Use `inplace` alongside `perl` to pre-process messy columns before splitting:
 
 ```shell
 # Convert date format inside quotes: "May 28, 2026" -> May-28-2026
-inplace perl -pe 's/"([A-Za-z]+) ([0-9]+), ([0-9]+)"/\$1-\$2-\$3/g' VT.csv
+inplace perl -pe 's/"([A-Za-z]+) ([0-9]+), ([0-9]+)"/$1-$2-$3/g' VT.csv
 
 # Remove thousands separators inside quotes: "1,234,567" -> 1234567
-inplace perl -pe 's/"([0-9]+),([0-9]+),([0-9]+)"/\$1\$2\$3/g' VT.csv
+inplace perl -pe 's/"([0-9]+),([0-9]+),([0-9]+)"/$1$2$3/g' VT.csv
 ```
 
 ### 3. Extract final columns safely
@@ -42,7 +42,7 @@ inplace perl -pe 's/"([0-9]+),([0-9]+),([0-9]+)"/\$1\$2\$3/g' VT.csv
 Once the conflicting commas are removed, extract your target columns into a new clean dataset:
 
 ```shell
-awk 'BEGIN { FS=","; OFS="," } { print \$1, \$5, \$6 }' VT.csv > VT_extracted.csv
+awk 'BEGIN { FS=","; OFS="," } { print $1, $5, $6 }' VT.csv > VT_extracted.csv
 ```
 
 ## License
