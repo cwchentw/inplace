@@ -1,0 +1,94 @@
+#!/bin/sh
+
+VERSION="0.1.0"
+
+PRINT_VERSION()
+{
+    echo "$VERSION"
+}
+
+PRINT_HELP()
+{
+    echo "Usage: $0 [options] <command> [args...] <source.txt>"
+    echo ""
+    echo "Options:"
+    echo "    -v    --version    Show version info"
+    echo "    -h    --help       Show help info"
+    echo "    -d    --dry-run    Show diff instead of editing"
+    echo "    -f    --file       Set file name"
+}
+
+if [ $# -lt 1 ]; then
+    PRINT_HELP >&2
+    exit 1
+fi
+
+DRY_RUN=0
+SRC_FILE_NAME=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -v|--version) PRINT_VERSION; exit 0 ;;
+        -h|--help)    PRINT_HELP; exit 0 ;;
+        -d|--dry-run) DRY_RUN=1; shift ;;
+        -f|--file)
+            if [ -z "$2" ]; then
+                echo "No file name" >&2
+                exit 1
+            fi
+            SRC_FILE_NAME="$2"
+            shift 2
+            ;;
+        -*)           echo "Error: Unknown option $1" >&2; exit 1 ;;
+        *)            break ;;
+    esac
+done
+
+if [ -n "$SRC_FILE_NAME" ]; then
+    srcdir=$(CDPATH='' cd -P -- "$(dirname -- "$SRC_FILE_NAME")" && pwd) || exit 1
+    srcfile="$srcdir/$(basename -- "$SRC_FILE_NAME")"
+    
+    NEED_POP_LAST=0
+else
+    for last in "$@"; do :; done
+
+    if [ -z "$last" ]; then
+        echo "Error: File argument cannot be empty." >&2
+        exit 1
+    fi
+
+    srcdir=$(CDPATH='' cd -P -- "$(dirname -- "$last")" && pwd) || exit 1
+    srcfile="$srcdir/$(basename -- "$last")"    
+
+    NEED_POP_LAST=1
+fi
+
+if [ ! -f "$srcfile" ]; then
+    echo "Error: File does not exist: $srcfile" >&2
+    exit 1
+fi
+
+if [ "$NEED_POP_LAST" -eq 1 ]; then
+    args_count=$(($# - 1))
+    i=0
+    while [ $i -lt $args_count ]; do
+        set -- "$@" "$1"
+        shift
+        i=$((i + 1))
+    done
+    shift  # Remove last argument.
+fi
+
+tmpfile=$(mktemp) || exit 1
+trap 'rm -f "$tmpfile"' EXIT INT TERM
+
+if "$@" < "$srcfile" > "$tmpfile"; then
+    if [ "$DRY_RUN" -eq 1 ]; then
+        diff -- "$tmpfile" "$srcfile"
+    else
+        cp -- "$tmpfile" "$srcfile"
+    fi
+else
+    echo "Error: Command failed. Original file left untouched." >&2
+    exit 1
+fi
